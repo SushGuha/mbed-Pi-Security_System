@@ -32,6 +32,8 @@
         }); 
     </script>
 
+    
+
 </head>
 <body>
     <nav id="navbar_top" class="navbar navbar-expand-lg navbar-light bg-light">
@@ -115,54 +117,80 @@
                 <h6>Code Example - Microphone Input</h6>
 
                 
-                    <xmp style="font-size: small; border-style: solid; border-width: 1px; background: #EEEEFF; align-items: flex-start;">
-                        #include "mbed.h"
-                        //Adafruit MEMs SPW2430 microphone demo -
-                        // LEDs display audio level
+                    <div>
+                        <button id="outer_microphone_code"> Copy to Clipboard</button>
+                        <xmp id="microphone_code" style="font-size: small; border-style: solid; border-width: 1px; background: #EEEEFF; align-items: flex-start;">
+                            #include "mbed.h"
+                            //Adafruit MEMs SPW2430 microphone demo -
+                            // LEDs display audio level
 
-                        BusOut myleds(LED1,LED2,LED3,LED4);
+                            BusOut myleds(LED1,LED2,LED3,LED4);
 
-                        class microphone
-                        {
-                            public :
-                                microphone(PinName pin);
-                                float read();
-                                operator float ();
-                            private :
-                                AnalogIn _pin;
-                        };
+                            class microphone
+                            {
+                                public :
+                                    microphone(PinName pin);
+                                    float read();
+                                    operator float ();
+                                private :
+                                    AnalogIn _pin;
+                            };
 
-                        microphone::microphone (PinName pin):
-                            _pin(pin)
-                        {
-                        }
-                        
-                        float microphone::read()
-                        {
-                            return _pin.read();
-                        }
-
-                        inline microphone::operator float ()
-                        {
-                            return _pin.read();
-                        }
-
-                        microphone mymicrophone(p16);
-
-                        int main()
-                        {
-                            while(1) {
-                                //read in, subtract 0.67 DC bias, take 
-                                // absolute value, and scale up .1Vpp 
-                                //to 15 for builtin LED display
-
-                                myleds = int(abs((mymicrophone - (0.67/3.3)))*500.0);
-
-                                //Use an 8kHz audio sample rate (phone quality audio);
-                                wait(1.0/8000.0);
+                            microphone::microphone (PinName pin):
+                                _pin(pin)
+                            {
                             }
+                            
+                            float microphone::read()
+                            {
+                                return _pin.read();
+                            }
+
+                            inline microphone::operator float ()
+                            {
+                                return _pin.read();
+                            }
+
+                            microphone mymicrophone(p16);
+
+                            int main()
+                            {
+                                while(1) {
+                                    //read in, subtract 0.67 DC bias, take 
+                                    // absolute value, and scale up .1Vpp 
+                                    //to 15 for builtin LED display
+
+                                    myleds = int(abs((mymicrophone - (0.67/3.3)))*500.0);
+
+                                    //Use an 8kHz audio sample rate (phone quality audio);
+                                    wait(1.0/8000.0);
+                                }
+                            }
+                        </xmp>
+                    </div>
+
+                    <script>
+                        
+                        document.getElementById("outer_microphone_code").addEventListener("click", displayDate);
+
+                        document.getElementById("microphone_code").addEventListener("click", displayDate);
+
+                        function displayDate() {
+                            cpyToClipboardMicrophone("microphone_code");
                         }
-                    </xmp>
+
+                        function cpyToClipboardMicrophone (elementID) {
+                            // alert("hello");
+                            var copyText = document.getElementById(elementID);
+
+                            // Copy the text inside the text field
+                            navigator.clipboard.writeText(copyText.innerText);
+
+                            // Alert the copied text
+                            // alert("Copied the text: " + copyText.value);
+                        }
+
+                    </script>
                 
 
                 <h5>Mbed Motor Control</h5>

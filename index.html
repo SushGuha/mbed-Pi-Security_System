@@ -14,9 +14,27 @@
         }
     </style>
 
+    <script>
+        // Script to make the Navbar sticky
+        document.addEventListener("DOMContentLoaded", function(){
+        window.addEventListener('scroll', function() {
+                if (window.scrollY > 1) {
+                    document.getElementById('navbar_top').classList.add('fixed-top');
+                    // add padding top to show content behind navbar
+                    navbar_height = document.querySelector('.navbar').offsetHeight;
+                    document.body.style.paddingTop = navbar_height + 'px';
+                } else {
+                    document.getElementById('navbar_top').classList.remove('fixed-top');
+                    // remove padding top from body
+                    document.body.style.paddingTop = '0';
+                } 
+            });
+        }); 
+    </script>
+
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <nav id="navbar_top" class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">Mbed-Pi Security System</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,10 +51,7 @@
             </ul>
             </div>
         </div>
-    </nav>
-    <!--  -->
-
-    
+    </nav>    
 
     <div style="margin-left: 30px; margin-right: 30px;">
 
@@ -53,15 +68,121 @@
 
         <h2 style="margin-top: 30px;">List Of Parts</h2>
 
-            <ul>
+            <ul style="margin-left: -30px;">
                 <li><a href="https://os.mbed.com/platforms/mbed-LPC1768/" target="_blank" rel="noopener noreferrer">mbed LPC1768</a></li>
                 <li><a href="https://www.raspberrypi.org/" target="_blank" rel="noopener noreferrer">Raspberry Pi</a> (Any Raspberry Pi model works, including Pi Zero)</li>
-                <li><a href="https://www.adafruit.com/product/2716" target="_blank" rel="noopener noreferrer">SPW2340</a> - Adafruit Silicon MEMS Microphone</li>
+                <li><a href="https://www.adafruit.com/product/2716" target="_blank" rel="noopener noreferrer">SPW2340</a> x 4 - Adafruit Silicon MEMS Microphone</li>
                 <li><a href="https://www.sparkfun.com/products/retired/10256" target="_blank" rel="noopener noreferrer">Motor Driver</a> - Sparkfun MOSFET driver</li>
-                <li><a href="https://www.amazon.com/s?k=geared+DC+motor&crid=22NQ734FUL54J&sprefix=geared+dc+motor%2Caps%2C152&ref=nb_sb_noss_1" target="_blank" rel="noopener noreferrer">DC Motor with 48:1 gear ratio</a> (The gear ratio is chanegable)</li>
+                <li><a href="https://www.amazon.com/s?k=geared+DC+motor&crid=22NQ734FUL54J&sprefix=geared+dc+motor%2Caps%2C152&ref=nb_sb_noss_1" target="_blank" rel="noopener noreferrer">DC Motor with 48:1 gear ratio</a> (The gear ratio is changeable)</li>
                 <li><a href="https://www.amazon.com/ZRM-Battery-5-5x2-1-Connector-Arduino/dp/B08P1L6JQT/ref=sr_1_3?crid=2CSMN5TBPG1JK&keywords=4+aa+battery+holder+barrel+jack&qid=1682398618&sprefix=battery+holder+to+barrel+%2Caps%2C99&sr=8-3" target="_blank" rel="noopener noreferrer">Barrel Jack Battery Holder</a></li>
+                <li><a href="https://www.amazon.com/Arkare-100V-240V-Replacement-Monitor-Scanner-Raspberry/dp/B09W96X88K/ref=sr_1_3?crid=325X8GD6HMUNQ&keywords=5VDC+2A+AC+adapter&qid=1682444179&sprefix=5vdc+2a+ac+adapter%2Caps%2C224&sr=8-3" target="_blank" rel="noopener noreferrer">Barrel Jack External Supply</a></li>
+                <li><a href="https://www.sparkfun.com/products/10811" target="_blank" rel="noopener noreferrer">Barrel Jack Breadboard Adapter</a></li>
+                <li><a href="https://www.sparkfun.com/products/12002" target="_blank" rel="noopener noreferrer">Solderless Breadboard</a> x 5</li>
             </ul>
+        
+        <h2>Steps</h2>
+            <div style="margin-left: 10px;">
+                <p>There are four major components for this project: 
+                    <ol>
+                        <li>
+                            Mbed microphone input
+                        </li>
+                        <li>
+                            Mbed motor control
+                        </li>
+                        <li>
+                            Pi camera stream
+                        </li>
+                        <li>
+                            Pi email notficiation system
+                        </li>
+                    </ol>
+                </p>
 
+                <h5>Mbed Microphone Input</h5>
+                    <p>The Mbed first needs to be connected to the four SPW2340 microphones to read their inputs.</p>
+                    
+                    <div style="display: flex; justify-content: flex-start;">
+                        <p>Plug in the barrel jack breadboard adapter into the breadboard, and connect the external supply to it. Connect the ground of the power supply to the ground of the mbed. The SPW2340 microphones require 5V inputs, and since there are four microphones, it is safer to connect them to an external supply than to 'VU' on the mbed.</p>
+                        <img src="breadboard_adapter.png" style="max-width: 150px; margin-top: -45px;">
+                    </div>
+                    
+                    <p>Plug in each microphone into an individual breadboard, and connect each microphone up to the mbed with the given wiring configuration. Use the Analog In ports 15, 16, 17, and 19. The reason for this will explained later. Point each of the four breadboards in four different directions facing opposite to each other.</p>
+
+                    <img src="microphone_wiring.png">
+                    <p><i>SPW2340 Microphone-Mbed Wiring</i></p>
+                
+                <h6>Code Example - Microphone Input</h6>
+
+                
+                    <xmp style="font-size: small; border-style: solid; border-width: 1px; background: #EEEEFF; align-items: flex-start;">
+                        #include "mbed.h"
+                        //Adafruit MEMs SPW2430 microphone demo -
+                        // LEDs display audio level
+
+                        BusOut myleds(LED1,LED2,LED3,LED4);
+
+                        class microphone
+                        {
+                            public :
+                                microphone(PinName pin);
+                                float read();
+                                operator float ();
+                            private :
+                                AnalogIn _pin;
+                        };
+
+                        microphone::microphone (PinName pin):
+                            _pin(pin)
+                        {
+                        }
+                        
+                        float microphone::read()
+                        {
+                            return _pin.read();
+                        }
+
+                        inline microphone::operator float ()
+                        {
+                            return _pin.read();
+                        }
+
+                        microphone mymicrophone(p16);
+
+                        int main()
+                        {
+                            while(1) {
+                                //read in, subtract 0.67 DC bias, take 
+                                // absolute value, and scale up .1Vpp 
+                                //to 15 for builtin LED display
+
+                                myleds = int(abs((mymicrophone - (0.67/3.3)))*500.0);
+
+                                //Use an 8kHz audio sample rate (phone quality audio);
+                                wait(1.0/8000.0);
+                            }
+                        }
+                    </xmp>
+                
+
+                <h5>Mbed Motor Control</h5>
+                    <p>The Mbed needs to be connected to the motor to control the direction of the Pi camera.</p>
+                    
+                    <!-- <div style="display: flex; justify-content: flex-start;">
+                        <p>Connect the motor to the motor driver using the givevn wiring diagram.</p>
+                        <img src="breadboard_adapter.png" style="max-width: 150px; margin-top: -45px;">
+                    </div> -->
+                    
+                    <p>Connect the motor to the motor driver using the given <a href="https://cdn.sparkfun.com/datasheets/Components/General/MOSFET_PowerControlKit_v11.pdf" target="_blank" rel="noopener noreferrer">wiring diagram</a>.</p>
+
+                    <img src="motor_diver_wiring.png" style="max-width: 70%;">
+                    <p><i>DC Motor-Driver Wiring</i></p>
+
+                    <p>The Control signal from the Motor Driver is connected to a Digital Out signal from the mbed. In the code example below, Pin 8 is used.</p>
+
+                    
+
+            </div>
         <p style="margin-top: 20px;">Last Updated: 25 April 2023</p>
         <p>Authors: Sushant Guha, Dinyar Islam, Milan Mistry</p>
     </div>

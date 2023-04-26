@@ -119,53 +119,53 @@
                 
                     <div>
                         <button id="outer_microphone_code"> Copy to Clipboard</button>
-                        <xmp id="microphone_code" style="font-size: small; border-style: solid; border-width: 1px; background: #EEEEFF; align-items: flex-start;">
-                            #include "mbed.h"
-                            //Adafruit MEMs SPW2430 microphone demo -
-                            // LEDs display audio level
+                        <xmp id="microphone_code" style="font-size: small; border-style: solid; border-width: 1px; background: #EEEEFF; align-items: flex-start; cursor: pointer; max-width: 410px;">
+    #include "mbed.h"
+    //Adafruit MEMs SPW2430 microphone demo
+    //LEDs display audio level
 
-                            BusOut myleds(LED1,LED2,LED3,LED4);
+    BusOut myleds(LED1,LED2,LED3,LED4);
 
-                            class microphone
-                            {
-                                public :
-                                    microphone(PinName pin);
-                                    float read();
-                                    operator float ();
-                                private :
-                                    AnalogIn _pin;
-                            };
+    class microphone
+    {
+        public :
+            microphone(PinName pin);
+            float read();
+            operator float ();
+        private :
+            AnalogIn _pin;
+    };
 
-                            microphone::microphone (PinName pin):
-                                _pin(pin)
-                            {
-                            }
-                            
-                            float microphone::read()
-                            {
-                                return _pin.read();
-                            }
+    microphone::microphone (PinName pin):
+        _pin(pin)
+    {
+    }
+    
+    float microphone::read()
+    {
+        return _pin.read();
+    }
 
-                            inline microphone::operator float ()
-                            {
-                                return _pin.read();
-                            }
+    inline microphone::operator float ()
+    {
+        return _pin.read();
+    }
 
-                            microphone mymicrophone(p16);
+    microphone mymicrophone(p16);
 
-                            int main()
-                            {
-                                while(1) {
-                                    //read in, subtract 0.67 DC bias, take 
-                                    // absolute value, and scale up .1Vpp 
-                                    //to 15 for builtin LED display
+    int main()
+    {
+        while(1) {
+            //read in, subtract 0.67 DC bias, take 
+            // absolute value, and scale up .1Vpp 
+            //to 15 for builtin LED display
 
-                                    myleds = int(abs((mymicrophone - (0.67/3.3)))*500.0);
+            myleds = int(abs((mymicrophone - (0.67/3.3)))*500.0);
 
-                                    //Use an 8kHz audio sample rate (phone quality audio);
-                                    wait(1.0/8000.0);
-                                }
-                            }
+            //Use an 8kHz audio sample rate (phone quality audio);
+            wait(1.0/8000.0);
+        }
+    }
                         </xmp>
                     </div>
 
@@ -206,13 +206,221 @@
                     <img src="motor_diver_wiring.png" style="max-width: 70%;">
                     <p><i>DC Motor-Driver Wiring</i></p>
 
-                    <p>The Control signal from the Motor Driver is connected to a Digital Out signal from the mbed. In the code example below, Pin 8 is used.</p>
+                    <p>The Control signal from the Motor Driver is connected to a DigitalOut signal from the mbed. In the code example below, Pin 8 is used. The positive and negative lines from the driver are connected to the positive and ground from the external power supply.</p>
 
-                    
+                    <h6>Code Example - Motor Driver</h6>
 
-            </div>
-        <p style="margin-top: 20px;">Last Updated: 25 April 2023</p>
-        <p>Authors: Sushant Guha, Dinyar Islam, Milan Mistry</p>
+                
+                        <div>
+                            <button id="outer_motor_code"> Copy to Clipboard</button>
+                            <xmp id="motor_code" style="font-size: small; border-style: solid; border-width: 1px; background: #EEEEFF; align-items: flex-start; cursor: pointer; max-width: 200px;">
+    #include "mbed.h"
+    DigitalOut motor(p8);
+    int main()
+    {
+        while(1) {
+            motor = 1;
+            wait(0.2);
+            motor = 0;
+            wait(0.2);
+        }
+    }
+                            </xmp>
+                        </div>
+
+                        <script>
+                            document.getElementById("outer_motor_code").addEventListener("click", displayDate2);
+
+                            document.getElementById("motor_code").addEventListener("click", displayDate2);
+
+                            function displayDate2() {
+                                cpyToClipboardMotor("motor_code");
+                            }
+
+                            function cpyToClipboardMotor (elementID) {
+                                var copyText = document.getElementById(elementID);
+                                // Copy the text inside the text field
+                                navigator.clipboard.writeText(copyText.innerText);
+                            }
+                        </script>
+                
+                <h5>Controlling the motor with microphone input</h5>
+                    <p>The Mbed needs to pivot the motor to the direction from which the most sound is coming if the sound exceeds a certain threshold. For this, the current state of the motor needs to be tracked. A state machine is maintained, and the microphones are used as input for the system. The motor controls and microphone inputs are run on separate threads to ensure that controlling the motor does not affect the sample rate of fthe microphone. To use threads, the Mbed RTOS (Real Time Operating System) is used. The code is given below.</p>
+
+                    <h6>Code Example - Complete Mbed system code</h6>
+
+                
+                        <div>
+                            <button id="outer_mbed_code"> Copy to Clipboard</button>
+                            <xmp id="mbed_code" style="font-size: small; border-style: solid; border-width: 1px; background: #EEEEFF; align-items: flex-start; cursor: pointer; max-width: 700px;">
+    
+    #include "mbed.h"
+    #include "rtos.h"
+
+    BusOut myleds(LED1,LED2,LED3,LED4);
+    Serial  pc(USBTX, USBRX);
+
+    class microphone
+    {
+    public :
+        microphone(PinName pin);
+        float read();
+        operator float ();
+    private :
+        AnalogIn _pin;
+    };
+    microphone::microphone (PinName pin):
+        _pin(pin)
+    {
+    }
+    float microphone::read()
+    {
+        return _pin.read();
+    }
+    inline microphone::operator float ()
+    {
+        return _pin.read();
+    }
+    DigitalOut email(p9);
+
+    microphone micA(p15);
+    microphone micB(p16);
+    microphone micC(p19);
+    microphone micD(p17);
+
+    DigitalOut motor(p8);
+
+    int motorVal = 0;
+    double motorTimePeriod = (1.0 / 8000.0);
+    double audioSampleRate = 1.0 / 8000.0;
+    double motorWaitPeriodInit = int(0.5 / audioSampleRate);
+    double motorWaitPeriod = motorWaitPeriodInit;
+    bool motorWaiting = false;
+    int micThreshold = 25;
+    int micMaxThreshold = 70;
+
+    int currPos = 0; // Assume the default position is 0.
+    volatile int nextPos = 0;
+    // 0 - A
+    // 1 - B
+    // 2 - C
+    // 3 - D
+    int offsetCycles = 0;
+    // Try using a different thread for the motor controls.
+    void motorPosition(void const * argument) {
+        while(1) {
+            if (currPos != nextPos) {
+                int numRotations;
+                double movementTimePeriod;
+                if (nextPos > currPos) {
+                    numRotations = abs(nextPos - currPos);
+                } else {
+                    numRotations = 4 - abs(nextPos - currPos);
+                }
+                double factor;
+                if (numRotations == 1) {
+                    factor = 250.0;
+                } else if (numRotations == 2) {
+                    factor = 230.0;
+                } else {
+                    factor = 220.0;
+                }
+                if (offsetCycles == 2) {
+                    offsetCycles = 0;
+                    movementTimePeriod = 1000.0 * double(numRotations) * double(motorTimePeriod) * (factor + 10);
+                } else {
+                    offsetCycles += 1;
+                    movementTimePeriod = 1000.0 * double(numRotations) * double(motorTimePeriod) * factor;
+                }
+                motor = 1;
+                Thread::wait(movementTimePeriod);
+                motor = 0;
+                pc.printf("Moving from %d to %d and %D\n", currPos, nextPos, numRotations);
+                currPos = nextPos;
+            }
+        }
+    }
+
+
+    int main()
+    {
+        email = 1;
+        pc.printf("Beggining current position: %d and next position: %d\n", currPos, nextPos);
+        Thread motorThread(motorPosition);
+        while(1) {
+    //read in, subtract 0.67 DC bias, take absolute value, and scale up .1Vpp to 15 for builtin LED display
+            int valueA = int(abs((micA - (0.67/3.3)))*500.0);
+            int valueB = int(abs((micB - (0.67/3.3)))*500.0);
+            int valueC = int(abs((micC - (0.67/3.3)))*500.0);
+            int valueD = int(abs((micD - (0.67/3.3)))*500.0);
+
+            myleds = (valueA + valueB + valueC + valueD) / 4; // Just used as an indicator.
+
+            if (motorWaiting) {
+                motorWaitPeriod -= 1;
+                if (motorWaitPeriod == 0) {
+                    motorWaiting = false;
+                    motorWaitPeriod = motorWaitPeriodInit;
+                }
+            }
+
+            if (valueA >= micThreshold && valueA < micMaxThreshold) {
+                // pc.printf("MIC-A: %d\n", int(valueA));
+                if (!motorWaiting) {
+                    nextPos = 0;
+                    motorWaiting = true;
+                }
+            }
+            if (valueB >= micThreshold && valueB < micMaxThreshold) {
+                // pc.printf("MIC-B: %d\n", int(valueB));
+                if (!motorWaiting) {
+                    nextPos = 1;
+                    motorWaiting = true;
+                }
+            }
+            if (valueC >= micThreshold && valueC < micMaxThreshold) {
+                // pc.printf("MIC-C: %d\n", int(valueC));
+                if (!motorWaiting) {
+                    nextPos = 2;
+                    motorWaiting = true;
+                }
+                
+            }
+            if (valueD >= micThreshold && valueD < micMaxThreshold) {
+                // pc.printf("MIC-D: %d\n", int(valueD));
+                if (!motorWaiting) {
+                    nextPos = 3;
+                    motorWaiting = true;
+                }
+            }
+
+    //Use an 8kHz audio sample rate (phone quality audio);
+            Thread::wait(audioSampleRate * 1000.0);
+        }
+    }
+                            </xmp>
+                        </div>
+
+                        <script>
+                            document.getElementById("outer_mbed_code").addEventListener("click", displayDate3);
+
+                            document.getElementById("mbed_code").addEventListener("click", displayDate3);
+
+                            function displayDate3() {
+                                cpyToClipboardMotor("mbed_code");
+                            }
+
+                            function cpyToClipboardMotor (elementID) {
+                                var copyText = document.getElementById(elementID);
+                                // Copy the text inside the text field
+                                navigator.clipboard.writeText(copyText.innerText);
+                            }
+                        </script>
+
+                <p style="margin-top: 20px;">Last Updated: 25 April 2023</p>
+                <p>Authors: Sushant Guha, Dinyar Islam, Milan Mistry</p>
+            </div> <!-- End of main content -->
+        
     </div>
     
 </body>

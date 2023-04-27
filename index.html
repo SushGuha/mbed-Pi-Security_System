@@ -36,7 +36,7 @@
 
 </head>
 <body>
-    <nav id="navbar_top" class="navbar navbar-expand-lg navbar-light bg-light">
+    <nav id="navbar_top" class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">Mbed-Pi Security System</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -80,6 +80,7 @@
                 <li><a href="https://www.amazon.com/Arkare-100V-240V-Replacement-Monitor-Scanner-Raspberry/dp/B09W96X88K/ref=sr_1_3?crid=325X8GD6HMUNQ&keywords=5VDC+2A+AC+adapter&qid=1682444179&sprefix=5vdc+2a+ac+adapter%2Caps%2C224&sr=8-3" target="_blank" rel="noopener noreferrer">Barrel Jack External Supply</a></li>
                 <li><a href="https://www.sparkfun.com/products/10811" target="_blank" rel="noopener noreferrer">Barrel Jack Breadboard Adapter</a></li>
                 <li><a href="https://www.sparkfun.com/products/12002" target="_blank" rel="noopener noreferrer">Solderless Breadboard</a> x 5</li>
+                <li>Breadboard Wires</li>
             </ul>
         
         <h2>Steps</h2>
@@ -97,6 +98,9 @@
                         </li>
                         <li>
                             Pi email notficiation system
+                        </li>
+                        <li>
+                            Final Mbed-Pi setup
                         </li>
                     </ol>
                 </p>
@@ -488,8 +492,200 @@
                                 navigator.clipboard.writeText(copyText.innerText);
                             }
                         </script>
+                <p>The image below shows the setup of the mbed with the four microphones and the H-bridge motor driver. The motor is placed outside the bounds of the picture to make it more accessible to attach the Pi.</p>
+                <img src="mbed_setup.jpeg" style="max-width: 50%;">
+                        <p><i>Mbed setup with four microphones and the H-bridge</i></p>
 
-                <p style="margin-top: 20px;">Last Updated: 25 April 2023</p>
+                <h5>Pi Camera Stream</h5>
+                        <p>The second half of the project involves using the Raspberry Pi to stream the Pi camera footage on the local network. The camera must first be connected to the Pi. For Raspberry Pi 3 and above, this can be done using the camera connector on the Pi board, but for the Pi-Zero, the extension must be used. Once the camera is connected, its feed must be broadcasted on the local network. The code example for this is given below, with a broadcast on port 8000: </p>
+               
+                        <div>
+                            <button id="outer_Pi_code"> Copy to Clipboard</button>
+                            <xmp id="Pi_code" style="font-size: small; border-style: solid; border-width: 1px; background: #EEEEFF; align-items: flex-start; cursor: pointer; max-width: 850px;">
+    import io
+    import picamera
+    import logging
+    import socketserver
+    from threading import Condition
+    from http import server
+    
+    PAGE="""\
+    <html>
+    <head>
+    <title>Raspberry Pi - Camera</title>
+    </head>
+    <body>
+    <center><h1> Raspberry pi - Camera </h1></center>
+    <center><img src="stream.mjpg" width="1000" height="600"></center>
+    <body style = "background-color: #2c2c2c;">
+    </body>
+    </html>
+    """
+    
+    class StreamingOutput(object):
+        def __init__(self):
+            self.frame = None
+            self.buffer = io.BytesIO()
+            self.condition = Condition()
+    
+        def write(self, buf):
+            if buf.startswith(b'\xff\xd8'):
+                # New frame, copy the existing buffer's content and notify all
+                # clients it's available
+                self.buffer.truncate()
+                with self.condition:
+                    self.frame = self.buffer.getvalue()
+                    self.condition.notify_all()
+                self.buffer.seek(0)
+            return self.buffer.write(buf)
+    
+    class StreamingHandler(server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == '/':
+                self.send_response(301)
+                self.send_header('Location', '/index.html')
+                self.end_headers()
+            elif self.path == '/index.html':
+                content = PAGE.encode('utf-8')
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html')
+                self.send_header('Content-Length', len(content))
+                self.end_headers()
+                self.wfile.write(content)
+            elif self.path == '/stream.mjpg':
+                self.send_response(200)
+                self.send_header('Age', 0)
+                self.send_header('Cache-Control', 'no-cache, private')
+                self.send_header('Pragma', 'no-cache')
+                self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
+                self.end_headers()
+                try:
+                    while True:
+                        with output.condition:
+                            output.condition.wait()
+                            frame = output.frame
+                        self.wfile.write(b'--FRAME\r\n')
+                        self.send_header('Content-Type', 'image/jpeg')
+                        self.send_header('Content-Length', len(frame))
+                        self.end_headers()
+                        self.wfile.write(frame)
+                        self.wfile.write(b'\r\n')
+                except Exception as e:
+                    logging.warning(
+                        'Removed streaming client %s: %s',
+                        self.client_address, str(e))
+            else:
+                self.send_error(404)
+                self.end_headers()
+    
+    class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+    
+    with picamera.PiCamera(resolution='1920x1080', framerate=35) as camera:
+        output = StreamingOutput()
+        #Uncomment the next line to change your Pi's Camera rotation (in degrees)
+        camera.rotation = 180
+        camera.exposure_mode = 'auto'
+        camera.awb_mode = 'auto'
+        camera.start_recording(output, format='mjpeg')
+        try:
+            address = ('', 8000)
+            server = StreamingServer(address, StreamingHandler)
+            server.serve_forever()
+        finally:
+            camera.stop_recording()
+    
+                                
+                            </xmp>
+                        </div>
+
+                        <script>
+                            document.getElementById("outer_Pi_code").addEventListener("click", displayDate4);
+
+                            document.getElementById("Pi_code").addEventListener("click", displayDate4);
+
+                            function displayDate4() {
+                                cpyToClipboardMotor("Pi_code");
+                            }
+
+                            function cpyToClipboardMotor (elementID) {
+                                var copyText = document.getElementById(elementID);
+                                // Copy the text inside the text field
+                                navigator.clipboard.writeText(copyText.innerText);
+                            }
+                        </script>   
+
+                <h5>Pi Email Setup Notification System</h5>
+                        <p>The Pi must send an email to the owner of the device when the camera detects an abnormaml sound input. To do this, Node Red is used, and GPIO pin 17 is used as the trigger. An rpi GPIO input is used, and a function module is used to trigger the email node when a signal of '1' is received from Pin-17. The email library must be imported using NodeJS and the Node Package Manager (npm). The following command is used: 
+                            <ul>
+                                <li> cd ~/,node-red</li>
+                                <li>npm install node-red-node-email</li>
+                            </ul>
+                        Outlook is used as an email service, since it allows for third parties to send and receive emails from the user's inbox. An image of the setup is shown below:
+</p>
+                        <img src="Node_Red_Setup.jpg" style="max-width: 50%;">
+                        <p><i>Node-Red email setup</i></p>
+                    <p>To activate the Pi's GPIO, connect an Analog Out pin from the mbed into GPIO Pin 17 on the Pi. Pin 18 was used in this project, and this is reflected in the code example for the mbed mentioned above. To ensure that the Pi can detect the mbed's Analog Out signal, this signal must be kept high for a minimum of 0.1 seconds. For this, the Thread::wait() function is used. An email is sent to the user's inbox, informing them of the noise threshold being exceeded:</p>
+                    <img src="Email_Notification.jpg" style="max-width: 50%;">
+                        <p><i>Email Notification to inform users of noise threshold detection</i></p>
+
+                
+
+                <h5>Final Mbed-Pi setup</h5>
+
+                <p>
+                    This section covers the physical setup of the project, primarily connecting the Mbed and the Pi together, and powering the Pi with a remote power supply. The first step is to secure the Pi camera securely onto the Pi. For this, a thin piece of plastic was taped using double-sided tape to the ethernet port of the Pi-4. The camera was then secured to the top of the plastic board to provide it with a better vantage point.
+                </p>
+
+                <p>
+                    A wheel was attached to the output of the 48:1 gearbox. Alternatively, a flat plastic or wooden board could be attached. The Pi is then placed on top of, and then secured to the wheel using double sided tape. A picture of this configuration is shown below. Note the position of the camera.
+                </p>
+
+                <img src="Pi_setup.jpeg" style="max-width: 50%;">
+                <p><i>The setup of the Raspberry Pi.</i></p>
+
+                <p>
+                    Note the platform upon which the apparatus sits. The platform helps provide stability to combat the vibrations of the motor. It is also raised, with foam pads on the bottom to prevent the other axle from scraping the surface of the table. 
+                </p>
+
+                <p>
+                    Also note the wires passing from the mbed breadboard to the Pi. These four wires server three purposes: 
+                </p>
+
+                <ol>
+                    <li>
+                        Provide power to the Pi
+                    </li>
+                    <li>
+                        Create a common ground between the Pi and the mbed
+                    </li>
+                    <li>
+                        Connect the mbed's Analog Out to the Pi's GPIO Input
+                    </li>
+                </ol>
+
+                <p>
+                    The Pi 4 is normally powered by a USB-C power supply. Other Pi models also depend on an external wire and power brick for power input. However, since the Pi will be rotating, the tension in the heavy-duty power cables will hinder the mobility of the setup. Instead, the GPIO header pins are used to power up the Pi since these power cables are lighter, and offer less resistance to the turning motion. Header pins 2 and 4 are connected to the external 5V power supply from the breadboard, and pin 6 is connected to the breadboard ground.
+                </p>
+
+                <p>
+                    The GPIO pin you set as your input for the Node-Red email notification system (Pin 17 in this case) is then connected to the AnalogOut from the mbed (Pin 18 in this case).
+                </p>
+
+                <p>
+                    A female-male wire is needed to connect to the Pi header pins. Connecting two of these wires together provides more slack in the system, which makes rotation of the Pi easier. This system can be used since the H-bridge driver allows for bi-directional rotation, and as long as the wires are long enough to handle a 270 degree rotation, the Pi and mbed will stay connected.
+                </p>
+
+                <p>
+                    The final setup is shown below:
+                </p>
+
+                <img src="complete_setup.jpeg" style="max-width: 60%;">
+                <p><i>The setup of the project with the Pi and mbed.</i></p>
+
+
+                <p style="margin-top: 20px;">Last Updated: 26 April 2023</p>
                 <p>Authors: Sushant Guha, Dinyar Islam, Milan Mistry</p>
             </div> <!-- End of main content -->
         
